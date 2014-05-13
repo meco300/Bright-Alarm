@@ -11,6 +11,7 @@ import android.os.PowerManager.WakeLock;
 import android.os.Vibrator;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.TextureView;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
@@ -27,6 +28,7 @@ public class AlarmNotificationActivity extends Activity {
     private WakeLock wakelock;
 
     MediaPlayer mediaPlayer;
+    TextureView mTextureView;
     private Camera camera = null;
     private Window window = null;
     private LayoutParams layoutParams = null;
@@ -34,37 +36,43 @@ public class AlarmNotificationActivity extends Activity {
 
     @Override
     public void onCreate(Bundle savedInstanceState){
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.alarm);
-        Log.v("AlarmNotificationActivity","onCreate");
+        // スクリーンロックを解除する。
+//        window = getWindow();
+//        layoutParams = new LayoutParams();
+//
+//        window.addFlags(layoutParams.FLAG_KEEP_SCREEN_ON
+//                | layoutParams.FLAG_SHOW_WHEN_LOCKED
+//                | layoutParams.FLAG_DISMISS_KEYGUARD
+//                | layoutParams.FLAG_TURN_SCREEN_ON
+//        );
 
         //スリープ状態から復帰する
         wakelock = ((PowerManager)getSystemService(Context.POWER_SERVICE))
                 .newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK
                         | PowerManager.ACQUIRE_CAUSES_WAKEUP
-                        | PowerManager.ON_AFTER_RELEASE, "disableLock");
+                        | PowerManager.ON_AFTER_RELEASE, ";;");
         wakelock.acquire();
 
-        // スクリーンロックを解除する。
+        super.onCreate(savedInstanceState);
 
-        window = getWindow();
         layoutParams = new LayoutParams();
+        layoutParams.screenBrightness = 1.0f;
+        getWindow().setAttributes(layoutParams);
 
-        window.addFlags(layoutParams.FLAG_SHOW_WHEN_LOCKED | layoutParams.FLAG_DISMISS_KEYGUARD);
-        camera = Camera.open();
-        camera.startPreview();
+        setContentView(R.layout.alarm);
+        Log.v("AlarmNotificationActivity", "onCreate");
     }
 
     @Override
-    public void onStart(){
-        super.onStart();
+    public void onResume(){
+        super.onResume();
         // とりあえず音要らない
 //        if(mediaPlayer == null){
 //            mediaPlayer = MediaPlayer.create(this,R.raw.alarm);
 //        }
-        layoutParams.screenBrightness = 1.0f;
-        window.setAttributes(layoutParams);
 
+        camera = Camera.open();
+        camera.startPreview();
         Camera.Parameters param = camera.getParameters();
         try {
             camera.setPreviewTexture(new SurfaceTexture(0));
@@ -79,11 +87,6 @@ public class AlarmNotificationActivity extends Activity {
 //        vibrator.vibrate(pattern,0);
     }
 
-    @Override
-    public void onDestroy(){
-        super.onDestroy();
-        stopAndRelease();
-    }
 
     private void stopAndRelease(){
         // 解除
@@ -91,6 +94,9 @@ public class AlarmNotificationActivity extends Activity {
         camera.release();
         camera = null;
 
+        if(wakelock.isHeld()){
+            wakelock.release();
+        }
 //        vibrator.cancel();
     }
 
@@ -103,9 +109,22 @@ public class AlarmNotificationActivity extends Activity {
         return false;
     }
 
-//    @Override
-//    public void onAttachedToWindow(){
-//        this.getWindow().setType(LayoutParams.TYPE_SYSTEM_ALERT);
-//        super.onAttachedToWindow();
-//    }
+    @Override
+    public void onAttachedToWindow(){
+        super.onAttachedToWindow();
+        window = getWindow();
+        layoutParams = new LayoutParams();
+
+        window.addFlags(layoutParams.FLAG_KEEP_SCREEN_ON
+                | layoutParams.FLAG_SHOW_WHEN_LOCKED
+                | layoutParams.FLAG_DISMISS_KEYGUARD
+                | layoutParams.FLAG_TURN_SCREEN_ON
+        );
+    }
+
+    @Override
+    public void onPause(){
+        super.onPause();
+        stopAndRelease();
+    }
 }
